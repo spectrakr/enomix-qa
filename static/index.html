@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>📄 PDF RAG 질의응답</title>
+  <style>
+    :root {
+      --primary-color: #4a6bff;
+      --secondary-color: #6c757d;
+      --success-color: #28a745;
+      --danger-color: #dc3545;
+      --light-bg: #f8f9fa;
+      --border-color: #dee2e6;
+      --text-color: #212529;
+      --shadow: 0 2px 4px rgba(0,0,0,0.1);
+      --bg-color: #f5f7ff;
+      --container-bg: white;
+      --chat-bg: white;
+      --user-bubble-bg: #e3f2fd;
+      --ai-bubble-bg: #f1f0f0;
+    }
+
+    [data-theme="dark"] {
+      --primary-color: #6b8cff;
+      --secondary-color: #adb5bd;
+      --success-color: #34ce57;
+      --danger-color: #ff6b6b;
+      --light-bg: #2d2d2d;
+      --border-color: #444;
+      --text-color: #e9ecef;
+      --shadow: 0 2px 4px rgba(0,0,0,0.3);
+      --bg-color: #1a1a1a;
+      --container-bg: #2d2d2d;
+      --chat-bg: #2d2d2d;
+      --user-bubble-bg: #1e3a5f;
+      --ai-bubble-bg: #3d3d3d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: var(--bg-color);
+      padding: 20px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--container-bg);
+      border-radius: 15px;
+      box-shadow: var(--shadow);
+      padding: 30px;
+      transition: background-color 0.3s ease;
+    }
+
+    h1 {
+      color: var(--primary-color);
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.2em;
+    }
+
+    h2 {
+      color: var(--primary-color);
+      margin: 30px 0 15px;
+      font-size: 1.5em;
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 8px;
+    }
+
+    .section {
+      background: var(--light-bg);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease;
+    }
+
+    .section:hover {
+      transform: translateY(-2px);
+    }
+
+    input, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 1em;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(74, 107, 255, 0.2);
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #3a5bef;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #chatBox {
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 15px;
+      background: var(--chat-bg);
+      border-radius: 10px;
+      margin: 15px 0;
+      box-shadow: var(--shadow);
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      margin: 10px 0;
+      padding: 12px 15px;
+      border-radius: 15px;
+      animation: fadeIn 0.3s ease;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      display: inline-block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user {
+      background-color: var(--user-bubble-bg);
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+      text-align: right;
+    }
+
+    .ai {
+      background-color: var(--ai-bubble-bg);
+      margin-right: auto;
+      border-bottom-left-radius: 5px;
+      text-align: left;
+    }
+
+    .file-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 15px;
+      margin: 10px 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+    }
+
+    .file-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .download-btn, .delete-btn {
+      padding: 8px 15px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      width: auto;
+      color: white;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .download-btn {
+      background-color: var(--success-color);
+    }
+
+    .download-btn:hover {
+      background-color: #218838;
+    }
+
+    .delete-btn {
+      background-color: var(--danger-color);
+    }
+
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
+
+    .reindex-all-section {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .reindex-btn {
+      padding: 12px 25px;
+      font-size: 1.1em;
+      background-color: var(--primary-color);
+    }
+
+    .reindex-btn:disabled {
+      background-color: var(--secondary-color);
+      cursor: not-allowed;
+    }
+
+    #loading {
+      text-align: center;
+      color: var(--secondary-color);
+      font-style: italic;
+      margin: 10px 0;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a5bef;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .file-actions {
+        margin-top: 10px;
+        width: 100%;
+      }
+
+      .download-btn, .delete-btn {
+        width: 100%;
+      }
+    }
+
+    .chat-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+  <div class="container">
+    <h1>📄 PDF 기반 GPT Q&A</h1>
+
+    <div class="section">
+      <h2>1️⃣ 질문 입력 (채팅)</h2>
+      <div id="chatBox" class="chat-wrapper"></div>
+      <textarea id="question" rows="2" placeholder="질문을 입력하세요..."></textarea>
+      <button onclick="askQuestion()">질문하기</button>
+      <div id="loading" style="display: none;">⏳ 답변을 생성 중입니다...</div>
+    </div>
+
+    <div class="section">
+      <h2>2️⃣ PDF 업로드</h2>
+      <input type="file" id="pdfInput" accept=".pdf" />
+      <button onclick="uploadPDF()">업로드 및 색인</button>
+    </div>
+
+    <div class="section">
+      <h2>3️⃣ 텍스트 색인</h2>
+      <textarea id="textInput" rows="4" placeholder="여기에 학습할 텍스트를 입력하세요.
+예시 ) 
+[질문]  금칙어에 대해 설명해줘
+[답변] 금칙어 기능은 고객의 악의적 언어 폭력을 겪어야 하는 접점직원을 보호하기 위해 욕설이나 비방 문자가 포함된 고객 메시지 입력을 차단하는 기능입니다. 
+이 기능을 사용하려면 먼저 [상담운영 설정>금칙어 관리] 화면에서 [등록] 또는 [금칙어 일괄등록]을 클릭하여 입력을 제한할 단어를 등록해야 합니다. 
+고객이 금칙어로 등록된 단어를 입력하면 입력 제한 안내가 제공됩니다."></textarea>
+      <input type="text" id="textSource" placeholder="파일명 (미입력시: TEMP)" />
+      <button onclick="uploadText()">텍스트 색인</button>
+    </div>
+
+<div class="section">
+  <h2>7️⃣ DB 검색 확인 (/ask_preview)</h2>
+  <input type="text" id="previewQuestion" placeholder="자연어 질문을 입력하세요" />
+  <input type="number" id="previewTopK" placeholder="결과 개수 (top_k, 기본 3)" />
+  <input type="number" id="previewFetchK" placeholder="검색 범위 (fetch_k, 기본 15)" />
+  <button onclick="previewAsk()">검색 실행</button>
+  <div id="askPreviewResult" style="margin-top: 15px; white-space: pre-wrap; font-size: 0.95em;"></div>
+</div>
+
+    <div class="section">
+      <h2>📂 색인된 파일 목록</h2>
+      <ul id="indexedFilesList" class="file-list"><li>⏳ 불러오는 중...</li></ul>
+    </div>
+
+    <div class="reindex-all-section">
+      <button id="reindexBtn" class="reindex-btn" onclick="reindexAll()">🔄 전체 데이터 재학습</button>
+    </div>
+  </div>
+
+
+  <script>
+
+
+    async function indexURL() {
+  const url = document.getElementById("urlInput").value.trim();
+  const source = document.getElementById("urlSource").value.trim() || "web";
+  if (!url) return alert("URL을 입력하세요.");
+
+  const formData = new FormData();
+  formData.append("url", url);
+  formData.append("source", source);
+
+  try {
+    const res = await fetch("/index_url/", {
+      method: "POST",
+      body: formData
+    });
+    const result = await res.json();
+    alert(result.message || result.error || "URL 색인 완료!");
+    fetchIndexedFiles();
+  } catch (err) {
+    alert("❌ URL 색인 실패");
+    console.error(err);
+  }
+}
+
+    async function askQuestion() {
+      const question = document.getElementById('question').value.trim();
+      const chatBox = document.getElementById("chatBox");
+      const loading = document.getElementById("loading");
+      if (!question) return alert("질문을 입력하세요.");
+
+      const formData = new FormData();
+      formData.append("question", question);
+
+      const userBubble = document.createElement("div");
+      userBubble.className = "chat-bubble user";
+      userBubble.innerText = question;
+      chatBox.appendChild(userBubble);
+      document.getElementById("question").value = "";
+
+      try {
+        loading.style.display = "block";
+        const res = await fetch("/ask/", { method: "POST", body: formData });
+        const result = await res.json();
+        loading.style.display = "none";
+
+        const aiBubble = document.createElement("div");
+        aiBubble.className = "chat-bubble ai";
+        aiBubble.innerText = result.error
+          ? "⚠️ 오류: " + result.error
+          : `${result.answer}${result.formatted_response ? `\n\n📋 상세 정보:\n${result.formatted_response}` : ""}${result.sources?.length ? `\n\n📂 출처: ${result.sources.join(", ")}` : ""}`;
+        chatBox.appendChild(aiBubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      } catch (err) {
+        loading.style.display = "none";
+        alert("❌ 질문 실패");
+        console.error(err);
+      }
+    }
+
+    async function uploadPDF() {
+      const file = document.getElementById('pdfInput').files[0];
+      if (!file) return alert("PDF 파일을 선택하세요.");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("/upload_pdf/", { method: "POST", body: formData });
+        const result = await res.json();
+        alert(result.message || "업로드 성공!");
+        fetchIndexedFiles();
+      } catch (err) {
+        alert("❌ 업로드 실패");
+        console.error(err);
+      }
+    }
+
+    async function uploadText() {
+      const text = document.getElementById("textInput").value;
+      const source = document.getElementById("textSource").value || "TEMP";
+      if (!text.trim()) return alert("텍스트를 입력하세요.");
+      const formData = new FormData();
+      formData.append("text", text);
+      formData.append("source", source);
+
+      try {
+        const res = await fetch("/upload_text/", { method: "POST", body: formData });
+        const result = await res.json();
+        alert(result.message || "텍스트 색인 성공!");
+        fetchIndexedFiles();
+      } catch (err) {
+        alert("❌ 텍스트 색인 실패");
+        console.error(err);
+      }
+    }
+
+    async function deleteFile(filename) {
+      if (!confirm(`정말 '${filename}' 파일을 삭제하시겠습니까?`)) return;
+      try {
+        const res = await fetch(`/files/${filename}`, { method: "DELETE" });
+        const result = await res.json();
+        alert(res.ok ? result.message : result.error);
+        fetchIndexedFiles();
+      } catch (err) {
+        alert("❌ 파일 삭제 실패");
+        console.error(err);
+      }
+    }
+
+    async function fetchIndexedFiles() {
+      try {
+        const res = await fetch("/indexed_files/");
+        const result = await res.json();
+        const list = document.getElementById("indexedFilesList");
+        list.innerHTML = "";
+
+        if (!result.indexed_files.length) {
+          list.innerHTML = "<li>❌ 색인된 파일이 없습니다.</li>";
+          return;
+        }
+
+        result.indexed_files.forEach(file => {
+          const li = document.createElement("li");
+          li.className = "file-item";
+
+          const fileNameSpan = document.createElement("span");
+          fileNameSpan.className = "file-name";
+          fileNameSpan.innerText = file.filename;
+
+          const actionsDiv = document.createElement("div");
+          actionsDiv.className = "file-actions";
+
+          const downloadLink = document.createElement("a");
+          downloadLink.href = file.download_url;
+          downloadLink.className = "download-btn";
+          downloadLink.innerText = "다운로드";
+
+          const deleteButton = document.createElement("button");
+          deleteButton.className = "delete-btn";
+          deleteButton.innerText = "삭제";
+          deleteButton.onclick = () => deleteFile(file.filename);
+
+          actionsDiv.appendChild(downloadLink);
+          actionsDiv.appendChild(deleteButton);
+
+          li.appendChild(fileNameSpan);
+          li.appendChild(actionsDiv);
+          list.appendChild(li);
+        });
+      } catch (err) {
+        console.error("❌ 색인된 파일 목록 불러오기 실패", err);
+      }
+    }
+
+    async function reindexAll() {
+      if (!confirm("전체 데이터를 다시 학습하시겠습니까?\n시간이 다소 소요될 수 있습니다.")) return;
+      const btn = document.getElementById("reindexBtn");
+      btn.disabled = true;
+      btn.innerText = "⏳ 재학습 중...";
+
+      try {
+        const res = await fetch("/indexed_files", { method: "POST" });
+        const result = await res.json();
+        alert(res.ok ? "전체 데이터 재학습이 완료되었습니다." : result.error);
+        fetchIndexedFiles();
+      } catch (err) {
+        alert("❌ 재학습 실패");
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "🔄 전체 데이터 재학습";
+      }
+    }
+
+
+async function previewAsk() {
+  const question = document.getElementById("previewQuestion").value.trim();
+  const topK = document.getElementById("previewTopK").value;
+  const fetchK = document.getElementById("previewFetchK").value;
+  const resultDiv = document.getElementById("askPreviewResult");
+  resultDiv.innerText = "";
+
+  if (!question) return alert("질문을 입력하세요.");
+
+  try {
+    const payload = {
+      question,
+      top_k: topK ? parseInt(topK) : 3,
+      fetch_k: fetchK ? parseInt(fetchK) : 15
+    };
+
+    const res = await fetch("/ask_preview/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await res.json();
+
+    if (res.ok && result.length) {
+      resultDiv.innerText = result
+        .map(r => `📄 ${r.source} [Page ${r.page ?? "-"}]\n${r.content}`)
+        .join("\n------------------------\n");
+    } else {
+      resultDiv.innerText = result.error
+        ? "❌ 오류: " + result.error
+        : "⚠️ 관련된 청크가 없습니다.";
+    }
+  } catch (err) {
+    resultDiv.innerText = "❌ 검색 실패: 콘솔 로그를 확인하세요.";
+    console.error(err);
+  }
+}
+
+    // 테마 관련 함수 추가
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      setTheme(newTheme);
+    }
+
+    // 페이지 로드 시 저장된 테마 적용
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      setTheme(savedTheme);
+      fetchIndexedFiles();
+    };
+
+
+
+  </script>
+</body>
+</html>
